@@ -1,6 +1,6 @@
-# Mask R-CNN for Object Detection and Segmentation
+![CrowdAI-Logo](https://github.com/crowdAI/crowdai/raw/master/app/assets/images/misc/crowdai-logo-smile.svg?sanitize=true)
 
-This is an implementation of [Mask R-CNN](https://arxiv.org/abs/1703.06870) on Python 3, Keras, and TensorFlow. The model generates bounding boxes and segmentation masks for each instance of an object in the image. It's based on Feature Pyramid Network (FPN) and a ResNet101 backbone.
+# crowdAI Mapping Challenge : Baseline
 
 ![Instance Segmentation Sample](assets/street.png)
 
@@ -82,27 +82,41 @@ Training and evaluation code is in `samples/coco/coco.py`. You can import this
 module in Jupyter notebook (see the provided notebooks for examples) or you
 can run it directly from the command line as such:
 
+# Installation
 ```
-# Train a new model starting from pre-trained COCO weights
-python3 samples/coco/coco.py train --dataset=/path/to/coco/ --model=coco
-
-# Train a new model starting from ImageNet weights
-python3 samples/coco/coco.py train --dataset=/path/to/coco/ --model=imagenet
-
-# Continue training a model that you had trained earlier
-python3 samples/coco/coco.py train --dataset=/path/to/coco/ --model=/path/to/weights.h5
-
-# Continue training the last model you trained. This will find
-# the last trained weights in the model directory.
-python3 samples/coco/coco.py train --dataset=/path/to/coco/ --model=last
+git clone https://github.com/spMohanty/crowdai-mapping-challenge-mask-rcnn
+cd crowdai-mapping-challenge-mask-rcnn
+# Please ensure that you use python3.6
+pip install -r requirements.txt
+python setup.py install
 ```
 
-You can also run the COCO evaluation code with:
-```
-# Run COCO evaluation on the last trained model
-python3 samples/coco/coco.py evaluate --dataset=/path/to/coco/ --model=last
-```
+# Notebooks
+Please follow the instructions on the relevant notebooks for the training, prediction and submissions.
 
+* [Training](Training.ipynb)
+* [Prediction and Submission](Prediction and Submission.ipynb) (pre-trained weights for baseline submission included)
+
+# Results
+![sample_predictions](images/predictions.png)
+
+# Citation
+```
+@misc{crowdAIMappingChallengeBaseline2018,
+  author = {Mohanty, Sharada Prasanna},
+  title = {CrowdAI Mapping Challenge 2018 : Baseline with Mask RCNN},
+  year = {2018},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/spMohanty/crowdai-mapping-challenge-mask-rcnn}},
+  commit = {a83c04bf906c2e286cddb2911e2b96d0e7d56bac}
+}
+```
+# Acknowledgements
+This repository heavily reuses code from the amazing [tensorflow Mask RCNN implementation](https://github.com/matterport/Mask_RCNN) by [@waleedka](https://github.com/waleedka/).
+Many thanks to all the contributors of that project.
+
+<<<<<<< HEAD
 The training schedule, learning rate, and other parameters should be set in `samples/coco/coco.py`.
 
 
@@ -239,3 +253,7 @@ A computer vision class project by HU Shiyu to apply the color pop effect on peo
 
 ### [GRASS GIS Addon](https://github.com/ctu-geoforall-lab/i.ann.maskrcnn) to generate vector masks from geospatial imagery. Based on a [Master's thesis](https://github.com/ctu-geoforall-lab-projects/dp-pesek-2018) by Ondřej Pešek.
 ![GRASS GIS Image](assets/project_grass_gis.png)
+=======
+# Author
+Sharada Mohanty [sharada.mohanty@epfl.ch](sharada.mohanty@epfl.ch)
+>>>>>>> Update README
