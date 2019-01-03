@@ -1,4 +1,5 @@
 import os
+import os.path
 import json
 from PIL import Image
 
@@ -11,17 +12,15 @@ new_data = {
     'features': []
 }
 not_processed = []
+files = [f for f in os.listdir('./train_images/scaled') if os.path.isfile(os.path.join('./train_images/scaled', f))]
 for feature in data['features']:
     img_name = feature.get('properties').get('image_id')
     path = './train_images/{}'.format(img_name)
 
 
-    if not os.path.exists(path):
-        path = './val_images/{}'.format(img_name)
 
-
-    if not os.path.exists(path):
-        print('[INFO] Could not find: {}'.format(path))
+    if not os.path.exists(path) or img_name not in files[31:61]:
+        print('[INFO] Skipping: {}'.format(path))
         not_processed.append(path)
         continue
 
@@ -42,15 +41,15 @@ for feature in data['features']:
         }
         feature['properties'].update(dimensions)
         seen[img_name]['dims'] = dimensions
-
-    
-
+    new_data['features'].append(feature)
 
 
-# data.update(new_data)
 
 
-new_fh = open('xview_data.new.json', 'w')
+data['features'] = new_data['features']
+
+
+new_fh = open('xview_data.val.json', 'w')
 not_proc_fh = open('not_processed.json', 'w')
 json.dump(not_processed, not_proc_fh)
 json.dump(data, new_fh)
