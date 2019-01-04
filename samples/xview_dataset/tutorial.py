@@ -36,11 +36,11 @@ class CigButtsConfig(Config):
     IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 83  # background + 1 (cig_butt)
+    NUM_CLASSES = 61  # background + 1 (cig_butt)
 
     # All of our training images are 512x512
-    IMAGE_MIN_DIM = 2426
-    IMAGE_MAX_DIM = 3325
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
 
     # You can experiment with this number to see if it improves training
     STEPS_PER_EPOCH = 500
@@ -170,19 +170,24 @@ class CocoLikeDataset(utils.Dataset):
 
 
 dataset_train = CocoLikeDataset()
-dataset_train.load_data('../datasets/xview_dataset/xview_data.new.json', '../datasets/xview_dataset/class_ids.json', '../datasets/xview_dataset/train_images')
+dataset_train.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/xview_dataset/class_ids.json', '../datasets/xview_dataset/xview_dataset/train_images')
 dataset_train.prepare()
 
 dataset_val = CocoLikeDataset()
-dataset_val.load_data('../datasets/xview_dataset/xview_data.new.json', '../datasets/xview_dataset/class_ids.json', '../datasets/xview_dataset/val_images')
+dataset_val.load_data('../datasets/xview_dataset/xview_data.val.json', '../datasets/xview_dataset/xview_dataset/class_ids.json', '../datasets/xview_dataset/xview_dataset/train_images')
 dataset_val.prepare()
 
 dataset = dataset_train
+
 image_ids = np.random.choice(dataset.image_ids, 4)
-for image_id in image_ids:
-    image = dataset.load_image(image_id)
-    mask, class_ids = dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
+# Suspect that because class IDs do not start from zero there are issues here.
+# print("IDS: {}".format(dataset.image_ids))
+# for image_id in image_ids:
+#     print("IMAGE ID: {}".format(image_id))
+#     dataset.image_info[]
+#     image = dataset.load_image(21)
+#     mask, class_ids = dataset.load_mask(image_id)
+#     visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
 
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
