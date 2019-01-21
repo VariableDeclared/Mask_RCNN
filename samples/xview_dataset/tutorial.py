@@ -29,14 +29,14 @@ class CigButtsConfig(Config):
     to the cigarette butts dataset.
     """
     # Give the configuration a recognizable name
-    NAME = "xview_dataset"
+    NAME = "cig_butts"
 
     # Train on 1 GPU and 1 image per GPU. Batch size is 1 (GPUs * images/GPU).
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 61  # background + 1 (cig_butt)
+    NUM_CLASSES = 1 + 1  # background + 1 (cig_butt)
 
     # All of our training images are 512x512
     IMAGE_MIN_DIM = 512
@@ -63,14 +63,10 @@ config = CigButtsConfig()
 config.display()
 
 class CocoLikeDataset(utils.Dataset):
-
-
-        
-
     """ Generates a COCO-like dataset, i.e. an image dataset annotated in the style of the COCO dataset.
         See http://cocodataset.org/#home for more information.
     """
-    def load_data(self, annotation_json, class_txt, images_dir):
+    def load_data(self, annotation_json, images_dir):
         """ Load the coco-like dataset from json
         Args:
             annotation_json: The path to the coco annotations json file
@@ -79,19 +75,14 @@ class CocoLikeDataset(utils.Dataset):
         # Load json from file
         json_file = open(annotation_json)
         coco_json = json.load(json_file)
-        class_file = open(class_txt)
-        id_dict = json.load(class_file)
-
-        class_file.close()
         json_file.close()
         
         # Add the class names using the base method from utils.Dataset
         source_name = "coco_like"
-
-        for category in id_dict.keys():
-            class_id = category
-            class_name = id_dict[category]
-            if int(class_id) < 1:
+        for category in coco_json['categories']:
+            class_id = category['id']
+            class_name = category['name']
+            if class_id < 1:
                 print('Error: Class id for "{}" cannot be less than one. (0 is reserved for the background)'.format(class_name))
                 return
             
@@ -99,24 +90,24 @@ class CocoLikeDataset(utils.Dataset):
         
         # Get all annotations
         annotations = {}
-        for annotation in coco_json['features']:
-            image_id = annotation['properties']['image_id']
+        for annotation in coco_json['annotations']:
+            image_id = annotation['image_id']
             if image_id not in annotations:
                 annotations[image_id] = []
             annotations[image_id].append(annotation)
         
         # Get all images and add them to the dataset
         seen_images = {}
-        for image in coco_json['features']:
-            image_id = image['properties']['image_id']
+        for image in coco_json['images']:
+            image_id = image['id']
             if image_id in seen_images:
                 print("Warning: Skipping duplicate image id: {}".format(image))
             else:
                 seen_images[image_id] = image
                 try:
-                    image_file_name = image['properties']['image_id']
-                    image_width = image['properties']['img_width']
-                    image_height = image['properties']['img_height']
+                    image_file_name = image['file_name']
+                    image_width = image['width']
+                    image_height = image['height']
                 except KeyError as key:
                     print("Warning: Skipping image (id: {}) with missing key: {}".format(image_id, key))
                 
@@ -149,16 +140,11 @@ class CocoLikeDataset(utils.Dataset):
         class_ids = []
         
         for annotation in annotations:
-            class_id = annotation['properties']['type_id']
+            class_id = annotation['category_id']
             mask = Image.new('1', (image_info['width'], image_info['height']))
             mask_draw = ImageDraw.ImageDraw(mask, '1')
-            segs = []
-
-            
-            for segmentation in annotation['geometry']['coordinates']:
-                for innercoord in segmentation:
-                    segs = segs + innercoord
-                mask_draw.polygon(segs, fill=1)
+            for segmentation in annotation['segmentation']:
+                mask_draw.polygon(segmentation, fill=1)
                 bool_array = np.array(mask) > 0
                 instance_masks.append(bool_array)
                 class_ids.append(class_id)
@@ -170,24 +156,19 @@ class CocoLikeDataset(utils.Dataset):
 
 
 dataset_train = CocoLikeDataset()
-dataset_train.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/xview_dataset/class_ids.json', '../datasets/xview_dataset/xview_dataset/train_images')
+dataset_train.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/train')
 dataset_train.prepare()
 
 dataset_val = CocoLikeDataset()
-dataset_val.load_data('../datasets/xview_dataset/xview_data.val.json', '../datasets/xview_dataset/xview_dataset/class_ids.json', '../datasets/xview_dataset/xview_dataset/train_images')
+dataset_val.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/train')
 dataset_val.prepare()
 
 dataset = dataset_train
-
 image_ids = np.random.choice(dataset.image_ids, 4)
-# Suspect that because class IDs do not start from zero there are issues here.
-# print("IDS: {}".format(dataset.image_ids))
-# for image_id in image_ids:
-#     print("IMAGE ID: {}".format(image_id))
-#     dataset.image_info[]
-#     image = dataset.load_image(21)
-#     mask, class_ids = dataset.load_mask(image_id)
-#     visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
+for image_id in image_ids:
+    image = dataset.load_image(image_id)
+    mask, class_ids = dataset.load_mask(image_id)
+    visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
 
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
