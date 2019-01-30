@@ -29,14 +29,14 @@ class CigButtsConfig(Config):
     to the cigarette butts dataset.
     """
     # Give the configuration a recognizable name
-    NAME = "cig_butts"
+    NAME = "xview_dataset"
 
     # Train on 1 GPU and 1 image per GPU. Batch size is 1 (GPUs * images/GPU).
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 1  # background + 1 (cig_butt)
+    NUM_CLASSES = 1 + 60  # background + 1 (cig_butt)
 
     # All of our training images are 512x512
     IMAGE_MIN_DIM = 512
@@ -50,7 +50,7 @@ class CigButtsConfig(Config):
     VALIDATION_STEPS = 5
     
     # Matterport originally used resnet101, but I downsized to fit it on my graphics card
-    BACKBONE = 'resnet50'
+    BACKBONE = 'resnet101'
 
     # To be honest, I haven't taken the time to figure out what these do
     RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
@@ -154,63 +154,78 @@ class CocoLikeDataset(utils.Dataset):
         
         return mask, class_ids
 
+import argparse
+
+parser = argparse.ArgumentParser(
+    description="Overide default behaviour"
+)
+parser.add_argument(
+    "--model",
+    required=False,
+    metavar="/path/to/model",
+    help="Override the default model and start anaylsis"
+)
+args = parser.parse_args()
 
 dataset_train = CocoLikeDataset()
-dataset_train.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/train')
+dataset_train.load_data('../datasets/xview_dataset/json/xview_coco.train.json', '../datasets/xview_dataset/train/scaled/')
 dataset_train.prepare()
 
 dataset_val = CocoLikeDataset()
-dataset_val.load_data('../datasets/xview_dataset/xview_data.train.json', '../datasets/xview_dataset/train')
+dataset_val.load_data('../datasets/xview_dataset/json/xview_coco.val.json', '../datasets/xview_dataset/val/scaled/')
 dataset_val.prepare()
 
 dataset = dataset_train
 image_ids = np.random.choice(dataset.image_ids, 4)
-for image_id in image_ids:
-    image = dataset.load_image(image_id)
-    mask, class_ids = dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
+# for image_id in image_ids:
+#     image = dataset.load_image(image_id)
+#     mask, class_ids = dataset.load_mask(image_id)
+#     visualize.display_top_masks(image, mask, class_ids, dataset.class_names)
+if not args.model:
+    # Create model in training mode
+    model = modellib.MaskRCNN(mode="training", config=config,
+                            model_dir=MODEL_DIR)
 
-# Create model in training mode
-model = modellib.MaskRCNN(mode="training", config=config,
-                          model_dir=MODEL_DIR)
+    # Which weights to start with?
+    init_with = "coco"  # imagenet, coco, or last
 
-# Which weights to start with?
-init_with = "coco"  # imagenet, coco, or last
-
-if init_with == "imagenet":
-    model.load_weights(model.get_imagenet_weights(), by_name=True)
-elif init_with == "coco":
-    # Load weights trained on MS COCO, but skip layers that
-    # are different due to the different number of classes
-    # See README for instructions to download the COCO weights
-    model.load_weights(COCO_MODEL_PATH, by_name=True,
-                       exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
-                                "mrcnn_bbox", "mrcnn_mask"])
-elif init_with == "last":
-    # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)
+    if init_with == "imagenet":
+        model.load_weights(model.get_imagenet_weights(), by_name=True)
+    elif init_with == "coco":
+        # Load weights trained on MS COCO, but skip layers that
+        # are different due to the different number of classes
+        # See README for instructions to download the COCO weights
+        model.load_weights(COCO_MODEL_PATH, by_name=True,
+                        exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
+                                    "mrcnn_bbox", "mrcnn_mask"])
+    elif init_with == "last":
+        # Load the last model you trained and continue training
+        model.load_weights(model.find_last(), by_name=True)
 
 
-# Train the head branches
-# Passing layers="heads" freezes all layers except the head
-# layers. You can also pass a regular expression to select
-# which layers to train by name pattern.
-start_train = time.time()
-model.train(dataset_train, dataset_val, 
-            learning_rate=config.LEARNING_RATE, 
-            epochs=4, 
-            layers='heads')
-end_train = time.time()
-minutes = round((end_train - start_train) / 60, 2)
-print(f'Training took {minutes} minutes')
+    # Train the head branches
+    # Passing layers="heads" freezes all layers except the head
+    # layers. You can also pass a regular expression to select
+    # which layers to train by name pattern.
+    start_train = time.time()
+    model.train(dataset_train, dataset_val, 
+                learning_rate=config.LEARNING_RATE, 
+                epochs=4, 
+                layers='heads')
+    end_train = time.time()
+    minutes = round((end_train - start_train) / 60, 2)
+    print('Training took {minutes} minutes')
+else:
+    MODEL_DIR = args.model
 
+print("[INFO] Model dir: {}".format(args.model))
 
 class InferenceConfig(CigButtsConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
     IMAGE_MIN_DIM = 512
     IMAGE_MAX_DIM = 512
-    DETECTION_MIN_CONFIDENCE = 0.85
+    DETECTION_MIN_CONFIDENCE = 0.4
     
 
 inference_config = InferenceConfig()
@@ -232,16 +247,17 @@ print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
 import skimage
-real_test_dir = '../../../datasets/cig_butts/real_test/'
+real_test_dir = '../datasets/xview_dataset/val/scaled'
 image_paths = []
 for filename in os.listdir(real_test_dir):
-    if os.path.splitext(filename)[1].lower() in ['.png', '.jpg', '.jpeg']:
+    if os.path.splitext(filename)[1].lower() in ['.png', '.tif']:
         image_paths.append(os.path.join(real_test_dir, filename))
 
 for image_path in image_paths:
     img = skimage.io.imread(image_path)
     img_arr = np.array(img)
     results = model.detect([img_arr], verbose=1)
+    print("[INFO] RESULTS: {}".format(results))
     r = results[0]
     visualize.display_instances(img, r['rois'], r['masks'], r['class_ids'], 
                                 dataset_val.class_names, r['scores'], figsize=(5,5))
