@@ -31,9 +31,8 @@ if mode_input not in mode:
     print("Mode not valid, use val or train")
     exit(1)
 
-files = [f for f in os.listdir('./{}'.format(mode_input)) if os.path.isfile(os.path.join('./{}'.format(mode_input), f))]
+files = [f for f in os.listdir('./{}/scaled'.format(mode_input)) if os.path.isfile(os.path.join('./{}/scaled'.format(mode_input), f))]
 class_ids = [class_id.get('id') for class_id in class_ids_json]
-print('[DEBUG] Class IDS: {}'.format(class_ids))
 
 imgs = {}
 i = 0
@@ -53,12 +52,27 @@ for feature in data['features']:
     
     coords = feature.get('properties').get('bounds_imcoords').split(',')
     details = imgs.get(img_name)
-    coords = list(map(int, coords))
+    imgwidth = 0
+    imgheight = 0
+    if details is not None:
+        imgwidth = details[1]
+        imgheight = details[2]
+    else:
+        imgwidth, imgheight = get_width_and_height("./{}/{}".format(mode_input, img_name))
+        print("[INFO]: Got height and width from {}, W: {} H: {}".format("./{}/{}".format(mode_input, img_name), imgwidth, imgheight))
+        imgs[img_name] = [i, imgwidth, imgheight]
+
+
+    xScale = 512 / imgwidth
+    yScale = 512 / imgheight
+    print("[INFO] Scaling by x: {} y: {}".format(xScale, yScale))
+    scaled_coords = [int(coords[0])*xScale, int(coords[1])*yScale, int(coords[2])*xScale, int(coords[3])*yScale]
     class_id = feature.get('properties').get('type_id')
- 
+
     # Check we want this class annotatation AND that we have <= 30 images, if
     # over 30 but the image is one we already have, add annotation.
     if class_id in class_ids and (len(imgs) < 30 or imgs.get(img_name)):
+        # print("[INFO] Processing: {}".format(img_name))
         # Only add image if it has an annotation.
         if details is not None:
             imgwidth = details[1]
@@ -68,18 +82,15 @@ for feature in data['features']:
             print("[INFO]: Got height and width from {}, W: {} H: {}".format("./{}/{}".format(mode_input, img_name), imgwidth, imgheight))
             imgs[img_name] = [i, imgwidth, imgheight]
 
-        # print("[INFO] Processing: {}".format(img_name))
         new_data['annotations'].append({
-            "segmentation": [coords],
+            "segmentation": [scaled_coords],
             "iscrowd": 0,
             "image_id": imgs[img_name][0],
             "category_id": class_id,
             "id": i,
-            "bbox": coords,
+            "bbox": scaled_coords,
             "area": 0
         })
-    
-        # print('[INFO] Class ID: {} not in set'.format(class_id)) 
         
     i += 1
 

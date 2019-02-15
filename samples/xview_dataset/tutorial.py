@@ -36,14 +36,11 @@ class CigButtsConfig(Config):
     IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 60  # background + 1 (cig_butt)
+    NUM_CLASSES = 1 + 12
 
-    # All of our training images are 512x512
-    IMAGE_MIN_DIM = 512
-    IMAGE_MAX_DIM = 512
 
     # You can experiment with this number to see if it improves training
-    STEPS_PER_EPOCH = 500
+    STEPS_PER_EPOCH = 150
 
     # This is how often validation is run. If you are using too much hard drive space
     # on saved models (in the MODEL_DIR), try making this value larger.
@@ -112,17 +109,19 @@ class CocoLikeDataset(utils.Dataset):
                     print("Warning: Skipping image (id: {}) with missing key: {}".format(image_id, key))
                 
                 image_path = os.path.abspath(os.path.join(images_dir, image_file_name))
-                image_annotations = annotations[image_id]
+                # Changing this to .get might cause errors with training
+                image_annotations = annotations.get(image_id)
                 
                 # Add the image using the base method from utils.Dataset
-                self.add_image(
-                    source=source_name,
-                    image_id=image_id,
-                    path=image_path,
-                    width=image_width,
-                    height=image_height,
-                    annotations=image_annotations
-                )
+                if image_annotations is not None:
+                    self.add_image(
+                        source=source_name,
+                        image_id=image_id,
+                        path=image_path,
+                        width=image_width,
+                        height=image_height,
+                        annotations=image_annotations
+                    )
                 
     def load_mask(self, image_id):
         """ Load instance masks for the given image.
@@ -168,11 +167,11 @@ parser.add_argument(
 args = parser.parse_args()
 
 dataset_train = CocoLikeDataset()
-dataset_train.load_data('../datasets/xview_dataset/json/xview_coco.train.json', '../datasets/xview_dataset/train/scaled/')
+dataset_train.load_data('../datasets/xview_dataset/json/training_coco.json', '../datasets/xview_dataset/xview.jpg/train')
 dataset_train.prepare()
 
 dataset_val = CocoLikeDataset()
-dataset_val.load_data('../datasets/xview_dataset/json/xview_coco.val.json', '../datasets/xview_dataset/val/scaled/')
+dataset_val.load_data('../datasets/xview_dataset/json/val_coco.json', '../datasets/xview_dataset/xview.jpg/train')
 dataset_val.prepare()
 
 dataset = dataset_train
@@ -223,8 +222,6 @@ print("[INFO] Model dir: {}".format(args.model))
 class InferenceConfig(CigButtsConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
-    IMAGE_MIN_DIM = 512
-    IMAGE_MAX_DIM = 512
     DETECTION_MIN_CONFIDENCE = 0.4
     
 
@@ -247,10 +244,10 @@ print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
 import skimage
-real_test_dir = '../datasets/xview_dataset/val/scaled'
+real_test_dir = '../datasets/xview_dataset/xview.jpg/train'
 image_paths = []
 for filename in os.listdir(real_test_dir):
-    if os.path.splitext(filename)[1].lower() in ['.png', '.tif']:
+    if os.path.splitext(filename)[1].lower() in ['.png', '.tif', '.jpg']:
         image_paths.append(os.path.join(real_test_dir, filename))
 
 for image_path in image_paths:
