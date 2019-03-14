@@ -250,11 +250,23 @@ for filename in os.listdir(real_test_dir):
     if os.path.splitext(filename)[1].lower() in ['.png', '.tif', '.jpg']:
         image_paths.append(os.path.join(real_test_dir, filename))
 
+
+results_dump = []
+
 for image_path in image_paths:
     img = skimage.io.imread(image_path)
     img_arr = np.array(img)
     results = model.detect([img_arr], verbose=1)
     print("[INFO] RESULTS: {}".format(results))
     r = results[0]
-    visualize.display_instances(img, r['rois'], r['masks'], r['class_ids'], 
-                                dataset_val.class_names, r['scores'], figsize=(5,5))
+    results_dump.append({
+        "image_path": image_path,
+        "rois": r['rois'].tolist(),
+        "class_ids": r['class_ids'].tolist()
+    })
+    # visualize.display_instances(img, r['rois'], r['masks'], r['class_ids'], 
+    #                             dataset_val.class_names, r['scores'], figsize=(5,5))
+print("[INFO] Dumping to json")
+fh = open('results.dump.json', 'w')
+json.dump(results_dump, fh)
+print("[INFO] Dumped.")
